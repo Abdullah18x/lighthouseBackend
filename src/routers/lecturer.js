@@ -318,28 +318,41 @@ router.post('/getLectrerStatus', auth, async (req,res) => {
 })
 
 router.post('/addBulkLecturers',auth, upload.single('csvFile'), async (req,res) => {
-    console.log(req.file)
-    const csvFilePath=req.file.path
-    csv()
-      .fromFile(csvFilePath)
-      .then((jsonObj) => {
-          
-        console.log(jsonObj);
-      });
-    // let query = 'INSERT INTO datasets(title, totalMarks, timeNeeded, ifC, switchC, whileL, dowhileL, forL, multipleClasses, methods, arrays, expectedAnsType, subjectId, resourceMaterial, details, resourceLinks,expectedAns, solution) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-    // try {
-    //     // if (!file) {
-    //     //     const error = new Error('Please upload a file')
-    //     //     error.httpStatusCode = 400
-    //     //     console.log(error) 
-    //     //   }
-    //     let conn = await sql.getDBConnection();
-    //     await conn.execute(query,[title,totalMarks,timeNeeded,ifC,switchC,whileL,dowhileL,forL,multipleClasses,methods,arrays,expectedAnsType,subjectId,resourceMaterial,details,resourceLinks,expectedAns,solution])
-    //     res.status(200).send('Inserted assignment')
-    // } catch (error) {
-    //     res.status(400).send(error)
-    //     console.log(error)
-    // }
+    let query = 'SELECT MAX(lecturerId) AS id FROM lecturer'
+    let query2 = 'INSERT INTO lecturer(userName, password, email, name, status) VALUES (?,?,?,?,?)'
+    // let dataToBeUploaded = ''
+
+    const csvFilePath = req.file.path
+
+    try {
+        let dataToBeUploaded = await csv().fromFile(csvFilePath);
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query)
+        let id = data[0].id+1
+        let uploadedData = []
+        
+
+        for (let i = 0; i < dataToBeUploaded.length; i++) {
+            let userName = `lecturer${id}`
+            await conn.execute(query2,[userName,'12345',dataToBeUploaded[i].email,dataToBeUploaded[i].name,0])
+            uploadedData.push({
+                "User_Name":userName,
+                "Password": "12345",
+                "Email": dataToBeUploaded[i].email,
+                "Name": dataToBeUploaded[i].name,
+                "Status": 0
+            })
+            id = id+1
+            
+        }
+
+        console.log(dataToBeUploaded)
+        console.log(id)
+        console.log(uploadedData)
+        res.send(uploadedData)
+    } catch (error) {
+        
+    }
 })
 
 //Delete a Lecturer

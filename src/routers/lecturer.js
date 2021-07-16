@@ -267,6 +267,17 @@ router.post('/getAssignedSections', auth2, async (req,res) => {
     }
 })
 
+router.post('/getAssignedLecturers', auth, async (req,res) => {
+    let query = 'SELECT assignId, name, section, subject FROM lecturer INNER JOIN lecturerassigned ON lecturer.lecturerId = lecturerassigned.lecturerId LEFT JOIN section ON lecturerassigned.sectionId = section.sectionId LEFT JOIN subject ON subject.subjectId = lecturerassigned.subjectId'
+    try {
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query)
+        res.send(data)
+    } catch (error) {
+        res.send(error)
+    }
+})
+
 router.post('/getLecturerAssignedSection', auth2, async (req,res) => {
     let sectionId = req.body.sectionId
     let subjectId = req.body.subjectId
@@ -316,6 +327,34 @@ router.post('/getLectrerStatus', auth, async (req,res) => {
         res.send(error)
     }
 })
+
+router.post('/updateProfile', auth, async (req,res) => {
+    let lecturerId = req.body.lecturerId
+    let name = req.body.name
+    let email = req.body.email
+    let query = 'UPDATE lecturer SET email = ?,name = ? WHERE lecturerId = ?'
+    try {
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query,[email,name,lecturerId])
+        res.send(data)
+    } catch (error) {
+        res.send(error)
+    }
+})
+
+router.post('/updatePassword', auth, async (req,res) => {
+    let lecturerId = req.body.lecturerId
+    let password = req.body.password
+    let query = 'UPDATE lecturer SET password = ? WHERE lecturerId = ?'
+    try {
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query,[password,lecturerId])
+        res.send(data)
+    } catch (error) {
+        res.send(error)
+    }
+})
+
 
 router.post('/addBulkLecturers',auth, upload.single('csvFile'), async (req,res) => {
     let query = 'SELECT MAX(lecturerId) AS id FROM lecturer'

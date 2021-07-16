@@ -4,6 +4,22 @@ const token = require('../methods/generateToken')
 const auth = require('../middleware/adminAuth')
 const auth2 = require('../middleware/lecturerAuth')
 const auth3 = require('../middleware/studentAuth')
+const csv=require('csvtojson')
+const multer = require('multer')
+var path = require('path')
+const fs = require("fs");
+
+var storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'src/uploads')
+    },
+    filename: function (req, file, cb) {
+      cb(null, Date.now() + path.extname(file.originalname))
+      
+    }
+  })
+   
+  var upload = multer({ storage: storage })
 
 const router = new express.Router()
 
@@ -68,7 +84,7 @@ router.post('/fetchStudent', auth2, async (req,res) => {
 
 router.post('/fetchStudentA', auth, async (req,res) => {
     let studentId = req.body.studentId
-    let query = 'SELECT * FROM student INNER JOIN registeration ON student.studentId = registeration.studentId INNER JOIN lecturerassigned ON registeration.assignId = lecturerassigned.assignId INNER JOIN subject ON subject.subjectId = lecturerassigned.subjectId INNER JOIN section ON section.sectionId = lecturerassigned.sectionId WHERE student.studentId = ?'
+    let query = 'SELECT * FROM student LEFT JOIN registeration ON student.studentId = registeration.studentId LEFT JOIN lecturerassigned ON registeration.assignId = lecturerassigned.assignId LEFT JOIN subject ON subject.subjectId = lecturerassigned.subjectId LEFT JOIN section ON section.sectionId = lecturerassigned.sectionId WHERE student.studentId = ?'
     try {
         let conn = await sql.getDBConnection();
         let [data,fields] = await conn.execute(query,[studentId])
@@ -223,6 +239,33 @@ router.patch('/restrictedUpdateS', async (req,res) => {
     }
 })
 
+router.patch('/updateProfile', auth3, async (req,res) => {
+    let studentId = req.body.studentId
+    let name = req.body.name
+    let email = req.body.email
+    let query = 'UPDATE student SET name = ? ,email = ? WHERE studentId = ?'
+    try {
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query,[name,email,studentId])
+        res.send(data)
+    } catch (error) {
+        res.send(error)
+    }
+})
+
+router.patch('/updatePassword', auth3, async (req,res) => {
+    let studentId = req.body.studentId
+    let password = req.body.password
+    let query = 'UPDATE student SET password = ? WHERE studentId = ?'
+    try {
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query,[password,studentId])
+        res.send(data)
+    } catch (error) {
+        res.send(error)
+    }
+})
+
 router.delete('/removeStudentFromSection', async (req,res) => {
     let studentId = req.body.studentId
     let query = 'DELETE FROM studentsection WHERE studentId = ?'
@@ -234,6 +277,46 @@ router.delete('/removeStudentFromSection', async (req,res) => {
         res.status(200).send('Student Removed')
     } catch (error) {
         res.status(400).send(error)
+    }
+})
+
+router.post('/addBulkStudents',auth, upload.single('csvFile'), async (req,res) => {
+    let query = 'SELECT MAX(studentId) AS id FROM student;'
+    let query2 = 'INSERT INTO student(userName, password, name, rollNo, email) VALUES (?,?,?,?,?)'
+    let query3 = 'INSERT INTO registeration(assignId, studentId) VALUES (?,?)'
+
+    const csvFilePath = req.file.path
+
+    try {
+        let dataToBeUploaded = await csv().fromFile(csvFilePath);
+        let assignId = req.body.assignId
+        let conn = await sql.getDBConnection();
+        let [data,fields] =  await conn.execute(query)
+        let id = data[0].id+1
+        let uploadedData = []
+        
+
+        for (let i = 0; i < dataToBeUploaded.length; i++) {
+            let userName = `student${id}`
+            await conn.execute(query2,[userName,'12345',dataToBeUploaded[i].name,dataToBeUploaded[i].rollNo,dataToBeUploaded[i].email])
+            await conn.execute(query3,[assignId,id])
+            uploadedData.push({
+                "User_Name":userName,
+                "Password": "12345",
+                "Email": dataToBeUploaded[i].email,
+                "Name": dataToBeUploaded[i].name,
+                "Roll No": dataToBeUploaded[i].rollNo
+            })
+            id = id+1
+            
+        }
+
+        console.log(dataToBeUploaded)
+        console.log(id)
+        console.log(uploadedData)
+        res.send(uploadedData)
+    } catch (error) {
+        
     }
 })
 

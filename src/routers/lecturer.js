@@ -385,10 +385,10 @@ router.post('/addBulkLecturers',auth, upload.single('csvFile'), async (req,res) 
             
         }
 
-        console.log(dataToBeUploaded)
-        console.log(id)
-        console.log(uploadedData)
-        res.send(uploadedData)
+        // console.log(dataToBeUploaded)
+        // console.log(id)
+        // console.log(uploadedData)
+        // res.send(uploadedData)
     } catch (error) {
         
     }
